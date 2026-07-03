@@ -38,5 +38,15 @@ const albums = [
     y: 22,
     influence: 86,
     note: "私的で、言葉と旋律の比重が高い。"
-  }
+  },
+{
+  title: "Kid A",
+  artist: "Radiohead",
+  year: 2000,
+  genre: "Alternative / Electronic",
+  x: 78,
+  y: 30,
+  influence: 94,
+  note: "ロックバンドが電子音楽以後の構造に接続した作品。"
+}
 ];
