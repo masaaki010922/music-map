@@ -58,6 +58,9 @@
 
     .node circle {
       fill: white;
+      stroke: #222;
+      stroke-width: 1.5;
+      transition: stroke 0.15s, stroke-width 0.15s, opacity 0.15s;
     }
 
     .node text {
@@ -66,16 +69,19 @@
       stroke-width: 4px;
       stroke-linejoin: round;
       pointer-events: none;
+      transition: fill 0.15s, opacity 0.15s;
     }
 
     .album-title {
       font-size: 13px;
       font-weight: 600;
+      fill: #222;
     }
 
     .album-meta {
       font-size: 11px;
       font-weight: 400;
+      fill: #555;
     }
 
     .link {
@@ -83,6 +89,7 @@
       stroke: #999;
       stroke-width: 1.6;
       opacity: 0.8;
+      transition: opacity 0.15s, stroke 0.15s, stroke-width 0.15s;
     }
 
     .link.mutual {
@@ -139,7 +146,7 @@
   <div class="legend">
     横軸：リリース年、5年刻み ／ 縦方向：自動配置<br>
     矢印：一方的な影響 ／ 破線：相互に影響を与え合った関係<br>
-    同じアーティストの作品が2枚以上ある場合、そのノードだけ自動で同じ色にします。
+    アルバムにカーソルを合わせると、同じアーティストの作品だけを赤で強調表示します。
   </div>
 
   <div class="tooltip" id="tooltip"></div>
@@ -158,6 +165,8 @@
       left: 80
     };
 
+    const highlightColor = "#d62828";
+
     const svg = d3.select("#chart")
       .append("svg")
       .attr("width", width)
@@ -174,35 +183,6 @@
       .range([margin.left, width - margin.right]);
 
     const years = d3.range(startYear, endYear + 1, 5);
-
-    const artistCounts = d3.rollup(
-      nodes,
-      v => v.length,
-      d => d.artist
-    );
-
-    const repeatedArtists = new Set(
-      Array.from(artistCounts.entries())
-        .filter(([artist, count]) => count >= 2)
-        .map(([artist]) => artist)
-    );
-
-    const repeatedArtistList = Array.from(repeatedArtists).sort();
-
-    const artistColorScale = d3.scaleOrdinal()
-      .domain(repeatedArtistList)
-      .range(d3.schemeTableau10);
-
-    function getArtistColor(artist) {
-      if (repeatedArtists.has(artist)) {
-        return artistColorScale(artist);
-      }
-      return "#222";
-    }
-
-    function hasRepeatedArtist(artist) {
-      return repeatedArtists.has(artist);
-    }
 
     svg.selectAll(".year-line")
       .data(years)
@@ -262,36 +242,31 @@
       );
 
     node.append("circle")
-      .attr("r", 10)
-      .attr("stroke", d => getArtistColor(d.artist))
-      .attr("stroke-width", d => hasRepeatedArtist(d.artist) ? 2.6 : 1.5);
+      .attr("r", 10);
 
     node.append("text")
       .attr("x", 14)
       .attr("y", -2)
       .each(function(d) {
-        const color = getArtistColor(d.artist);
-        const metaColor = hasRepeatedArtist(d.artist) ? color : "#555";
-
         const text = d3.select(this);
 
         text.append("tspan")
           .attr("class", "album-title")
           .attr("x", 14)
           .attr("dy", 0)
-          .attr("fill", color)
           .text(d.title);
 
         text.append("tspan")
           .attr("class", "album-meta")
           .attr("x", 14)
           .attr("dy", 16)
-          .attr("fill", metaColor)
           .text(`${d.artist} / ${d.year}`);
       });
 
     node
       .on("mousemove", (event, d) => {
+        highlightArtist(d.artist);
+
         tooltip.style.display = "block";
         tooltip.style.left = `${event.clientX + 14}px`;
         tooltip.style.top = `${event.clientY + 14}px`;
@@ -303,6 +278,7 @@
         `;
       })
       .on("mouseleave", () => {
+        resetHighlight();
         tooltip.style.display = "none";
       });
 
@@ -329,7 +305,7 @@
       .force("x", d3.forceX(d => xScale(d.year)).strength(1.0))
       .force("y", d3.forceY(height / 2).strength(0.08))
       .force("charge", d3.forceManyBody().strength(-260))
-      .force("collide", d3.forceCollide().radius(64).strength(1))
+      .force("collide", d3.forceCollide().radius(70).strength(1))
       .on("tick", ticked);
 
     function ticked() {
@@ -343,6 +319,56 @@
         d.y = Math.max(margin.top, Math.min(height - margin.bottom, d.y));
         return `translate(${d.x},${d.y})`;
       });
+    }
+
+    function highlightArtist(artist) {
+      node.style("opacity", d => d.artist === artist ? 1 : 0.28);
+
+      node.select("circle")
+        .attr("stroke", d => d.artist === artist ? highlightColor : "#222")
+        .attr("stroke-width", d => d.artist === artist ? 3 : 1.5);
+
+      node.selectAll(".album-title")
+        .attr("fill", d => d.artist === artist ? highlightColor : "#222");
+
+      node.selectAll(".album-meta")
+        .attr("fill", d => d.artist === artist ? highlightColor : "#555");
+
+      link
+        .style("opacity", d => {
+          const sourceArtist = d.source.artist;
+          const targetArtist = d.target.artist;
+          return sourceArtist === artist || targetArtist === artist ? 0.9 : 0.18;
+        })
+        .attr("stroke", d => {
+          const sourceArtist = d.source.artist;
+          const targetArtist = d.target.artist;
+          return sourceArtist === artist || targetArtist === artist ? highlightColor : "#999";
+        })
+        .attr("stroke-width", d => {
+          const sourceArtist = d.source.artist;
+          const targetArtist = d.target.artist;
+          return sourceArtist === artist || targetArtist === artist ? 2.3 : 1.6;
+        });
+    }
+
+    function resetHighlight() {
+      node.style("opacity", 1);
+
+      node.select("circle")
+        .attr("stroke", "#222")
+        .attr("stroke-width", 1.5);
+
+      node.selectAll(".album-title")
+        .attr("fill", "#222");
+
+      node.selectAll(".album-meta")
+        .attr("fill", "#555");
+
+      link
+        .style("opacity", 0.8)
+        .attr("stroke", "#999")
+        .attr("stroke-width", d => d.type === "mutual" ? 2.4 : 1.6);
     }
 
     function dragStarted(event, d) {
