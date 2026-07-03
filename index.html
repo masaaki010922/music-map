@@ -44,6 +44,10 @@
       cursor: pointer;
     }
 
+    button:hover {
+      background: #f0f0f0;
+    }
+
     #chart {
       width: 100%;
       height: 75vh;
@@ -54,18 +58,24 @@
 
     .node circle {
       fill: white;
-      stroke: #222;
-      stroke-width: 1.5;
     }
 
     .node text {
-      font-size: 13px;
       paint-order: stroke;
       stroke: white;
       stroke-width: 4px;
       stroke-linejoin: round;
-      fill: #222;
       pointer-events: none;
+    }
+
+    .album-title {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .album-meta {
+      font-size: 11px;
+      font-weight: 400;
     }
 
     .link {
@@ -128,7 +138,8 @@
 
   <div class="legend">
     横軸：リリース年、5年刻み ／ 縦方向：自動配置<br>
-    矢印：一方的な影響 ／ 破線：相互に影響を与え合った関係
+    矢印：一方的な影響 ／ 破線：相互に影響を与え合った関係<br>
+    同じアーティストの作品が2枚以上ある場合、そのノードだけ自動で同じ色にします。
   </div>
 
   <div class="tooltip" id="tooltip"></div>
@@ -163,6 +174,35 @@
       .range([margin.left, width - margin.right]);
 
     const years = d3.range(startYear, endYear + 1, 5);
+
+    const artistCounts = d3.rollup(
+      nodes,
+      v => v.length,
+      d => d.artist
+    );
+
+    const repeatedArtists = new Set(
+      Array.from(artistCounts.entries())
+        .filter(([artist, count]) => count >= 2)
+        .map(([artist]) => artist)
+    );
+
+    const repeatedArtistList = Array.from(repeatedArtists).sort();
+
+    const artistColorScale = d3.scaleOrdinal()
+      .domain(repeatedArtistList)
+      .range(d3.schemeTableau10);
+
+    function getArtistColor(artist) {
+      if (repeatedArtists.has(artist)) {
+        return artistColorScale(artist);
+      }
+      return "#222";
+    }
+
+    function hasRepeatedArtist(artist) {
+      return repeatedArtists.has(artist);
+    }
 
     svg.selectAll(".year-line")
       .data(years)
@@ -222,12 +262,33 @@
       );
 
     node.append("circle")
-      .attr("r", 10);
+      .attr("r", 10)
+      .attr("stroke", d => getArtistColor(d.artist))
+      .attr("stroke-width", d => hasRepeatedArtist(d.artist) ? 2.6 : 1.5);
 
     node.append("text")
       .attr("x", 14)
-      .attr("y", 4)
-      .text(d => d.title);
+      .attr("y", -2)
+      .each(function(d) {
+        const color = getArtistColor(d.artist);
+        const metaColor = hasRepeatedArtist(d.artist) ? color : "#555";
+
+        const text = d3.select(this);
+
+        text.append("tspan")
+          .attr("class", "album-title")
+          .attr("x", 14)
+          .attr("dy", 0)
+          .attr("fill", color)
+          .text(d.title);
+
+        text.append("tspan")
+          .attr("class", "album-meta")
+          .attr("x", 14)
+          .attr("dy", 16)
+          .attr("fill", metaColor)
+          .text(`${d.artist} / ${d.year}`);
+      });
 
     node
       .on("mousemove", (event, d) => {
@@ -268,13 +329,11 @@
       .force("x", d3.forceX(d => xScale(d.year)).strength(1.0))
       .force("y", d3.forceY(height / 2).strength(0.08))
       .force("charge", d3.forceManyBody().strength(-260))
-      .force("collide", d3.forceCollide().radius(54).strength(1))
+      .force("collide", d3.forceCollide().radius(64).strength(1))
       .on("tick", ticked);
 
     function ticked() {
       link.attr("d", d => {
-        const dx = d.target.x - d.source.x;
-        const dy = d.target.y - d.source.y;
         const dr = d.type === "mutual" ? 40 : 0;
         return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`;
       });
