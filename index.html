@@ -75,13 +75,11 @@
     .album-title {
       font-size: 13px;
       font-weight: 600;
-      fill: #222;
     }
 
     .album-meta {
       font-size: 11px;
       font-weight: 400;
-      fill: #555;
     }
 
     .link {
@@ -204,8 +202,9 @@
       .attr("text-anchor", "middle")
       .text(d => d);
 
-    svg.append("defs")
-      .append("marker")
+    const defs = svg.append("defs");
+
+    defs.append("marker")
       .attr("id", "arrow")
       .attr("viewBox", "0 -5 10 10")
       .attr("refX", 22)
@@ -216,6 +215,18 @@
       .append("path")
       .attr("d", "M0,-5L10,0L0,5")
       .attr("fill", "#999");
+
+    defs.append("marker")
+      .attr("id", "arrow-red")
+      .attr("viewBox", "0 -5 10 10")
+      .attr("refX", 22)
+      .attr("refY", 0)
+      .attr("markerWidth", 7)
+      .attr("markerHeight", 7)
+      .attr("orient", "auto")
+      .append("path")
+      .attr("d", "M0,-5L10,0L0,5")
+      .attr("fill", highlightColor);
 
     const nodeData = nodes.map(d => ({ ...d }));
     const linkData = links.map(d => ({ ...d }));
@@ -242,7 +253,9 @@
       );
 
     node.append("circle")
-      .attr("r", 10);
+      .attr("r", 10)
+      .style("stroke", "#222")
+      .style("stroke-width", 1.5);
 
     node.append("text")
       .attr("x", 14)
@@ -254,12 +267,14 @@
           .attr("class", "album-title")
           .attr("x", 14)
           .attr("dy", 0)
+          .style("fill", "#222")
           .text(d.title);
 
         text.append("tspan")
           .attr("class", "album-meta")
           .attr("x", 14)
           .attr("dy", 16)
+          .style("fill", "#555")
           .text(`${d.artist} / ${d.year}`);
       });
 
@@ -325,14 +340,14 @@
       node.style("opacity", d => d.artist === artist ? 1 : 0.28);
 
       node.select("circle")
-        .attr("stroke", d => d.artist === artist ? highlightColor : "#222")
-        .attr("stroke-width", d => d.artist === artist ? 3 : 1.5);
+        .style("stroke", d => d.artist === artist ? highlightColor : "#222")
+        .style("stroke-width", d => d.artist === artist ? 3 : 1.5);
 
       node.selectAll(".album-title")
-        .attr("fill", d => d.artist === artist ? highlightColor : "#222");
+        .style("fill", d => d.artist === artist ? highlightColor : "#222");
 
       node.selectAll(".album-meta")
-        .attr("fill", d => d.artist === artist ? highlightColor : "#555");
+        .style("fill", d => d.artist === artist ? highlightColor : "#555");
 
       link
         .style("opacity", d => {
@@ -340,15 +355,25 @@
           const targetArtist = d.target.artist;
           return sourceArtist === artist || targetArtist === artist ? 0.9 : 0.18;
         })
-        .attr("stroke", d => {
+        .style("stroke", d => {
           const sourceArtist = d.source.artist;
           const targetArtist = d.target.artist;
           return sourceArtist === artist || targetArtist === artist ? highlightColor : "#999";
         })
-        .attr("stroke-width", d => {
+        .style("stroke-width", d => {
           const sourceArtist = d.source.artist;
           const targetArtist = d.target.artist;
-          return sourceArtist === artist || targetArtist === artist ? 2.3 : 1.6;
+          return sourceArtist === artist || targetArtist === artist ? 2.3 : (d.type === "mutual" ? 2.4 : 1.6);
+        })
+        .attr("marker-end", d => {
+          if (d.type !== "oneway") return null;
+
+          const sourceArtist = d.source.artist;
+          const targetArtist = d.target.artist;
+
+          return sourceArtist === artist || targetArtist === artist
+            ? "url(#arrow-red)"
+            : "url(#arrow)";
         });
     }
 
@@ -356,19 +381,20 @@
       node.style("opacity", 1);
 
       node.select("circle")
-        .attr("stroke", "#222")
-        .attr("stroke-width", 1.5);
+        .style("stroke", "#222")
+        .style("stroke-width", 1.5);
 
       node.selectAll(".album-title")
-        .attr("fill", "#222");
+        .style("fill", "#222");
 
       node.selectAll(".album-meta")
-        .attr("fill", "#555");
+        .style("fill", "#555");
 
       link
         .style("opacity", 0.8)
-        .attr("stroke", "#999")
-        .attr("stroke-width", d => d.type === "mutual" ? 2.4 : 1.6);
+        .style("stroke", "#999")
+        .style("stroke-width", d => d.type === "mutual" ? 2.4 : 1.6)
+        .attr("marker-end", d => d.type === "oneway" ? "url(#arrow)" : null);
     }
 
     function dragStarted(event, d) {
