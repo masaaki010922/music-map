@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Music Map</title>
+  <title>Music Relationship Map</title>
 
-  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
   <script src="data.js"></script>
 
   <style>
@@ -32,139 +32,281 @@
     }
 
     .controls {
-      padding: 16px 32px;
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      align-items: center;
+      padding: 12px 32px 16px;
     }
 
-    select, input {
+    button {
       font-size: 14px;
-      padding: 8px 10px;
+      padding: 8px 12px;
       border: 1px solid #ccc;
       border-radius: 6px;
       background: white;
+      cursor: pointer;
     }
 
     #chart {
       width: 100%;
-      height: 72vh;
+      height: 75vh;
+      background: #ffffff;
+      border-top: 1px solid #ddd;
+      border-bottom: 1px solid #ddd;
     }
 
-    .axis-note {
-      padding: 0 32px 24px;
+    .node circle {
+      fill: white;
+      stroke: #222;
+      stroke-width: 1.5;
+    }
+
+    .node text {
+      font-size: 13px;
+      paint-order: stroke;
+      stroke: white;
+      stroke-width: 4px;
+      stroke-linejoin: round;
+      fill: #222;
+      pointer-events: none;
+    }
+
+    .link {
+      fill: none;
+      stroke: #999;
+      stroke-width: 1.6;
+      opacity: 0.8;
+    }
+
+    .link.mutual {
+      stroke-width: 2.4;
+      stroke-dasharray: 6 4;
+    }
+
+    .year-line {
+      stroke: #e0e0e0;
+      stroke-width: 1;
+    }
+
+    .year-label {
+      font-size: 12px;
+      fill: #777;
+    }
+
+    .tooltip {
+      position: fixed;
+      display: none;
+      max-width: 280px;
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.5;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .legend {
+      padding: 12px 32px 24px;
       color: #666;
       font-size: 14px;
+      line-height: 1.7;
     }
   </style>
 </head>
 
 <body>
   <header>
-    <h1>Music Map</h1>
-    <p>名盤・アーティストを、自分の批評軸で配置するための個人用音楽地図。</p>
+    <h1>Music Relationship Map</h1>
+    <p>アルバム同士の影響関係を、リリース年に沿って配置する音楽相関図。</p>
   </header>
 
   <div class="controls">
-    <label>
-      ジャンル：
-      <select id="genreFilter">
-        <option value="all">すべて</option>
-      </select>
-    </label>
-
-    <label>
-      検索：
-      <input id="searchInput" type="text" placeholder="artist / album">
-    </label>
+    <button id="restartButton">配置を再計算</button>
   </div>
 
   <div id="chart"></div>
 
-  <div class="axis-note">
-    横軸：生演奏的 ←→ 電子的 ／ 縦軸：内省的 ←→ 祝祭的
+  <div class="legend">
+    横軸：リリース年 ／ 縦方向：自動配置<br>
+    矢印：一方的な影響 ／ 破線：相互に影響を与え合った関係
   </div>
 
+  <div class="tooltip" id="tooltip"></div>
+
   <script>
-    const genreFilter = document.getElementById("genreFilter");
-    const searchInput = document.getElementById("searchInput");
+    const chart = document.getElementById("chart");
+    const tooltip = document.getElementById("tooltip");
 
-    const genres = [...new Set(albums.map(a => a.genre))].sort();
+    const width = chart.clientWidth;
+    const height = chart.clientHeight;
 
-    genres.forEach(genre => {
-      const option = document.createElement("option");
-      option.value = genre;
-      option.textContent = genre;
-      genreFilter.appendChild(option);
-    });
+    const margin = {
+      top: 48,
+      right: 80,
+      bottom: 56,
+      left: 80
+    };
 
-    function render() {
-      const selectedGenre = genreFilter.value;
-      const searchText = searchInput.value.toLowerCase();
+    const svg = d3.select("#chart")
+      .append("svg")
+      .attr("width", width)
+      .attr("height", height);
 
-      const filtered = albums.filter(album => {
-        const genreMatch = selectedGenre === "all" || album.genre === selectedGenre;
-        const textMatch =
-          album.title.toLowerCase().includes(searchText) ||
-          album.artist.toLowerCase().includes(searchText);
+    const minYear = d3.min(nodes, d => d.year);
+    const maxYear = d3.max(nodes, d => d.year);
 
-        return genreMatch && textMatch;
+    const xScale = d3.scaleLinear()
+      .domain([minYear - 2, maxYear + 2])
+      .range([margin.left, width - margin.right]);
+
+    const years = [...new Set(nodes.map(d => d.year))].sort((a, b) => a - b);
+
+    svg.selectAll(".year-line")
+      .data(years)
+      .enter()
+      .append("line")
+      .attr("class", "year-line")
+      .attr("x1", d => xScale(d))
+      .attr("x2", d => xScale(d))
+      .attr("y1", margin.top)
+      .attr("y2", height - margin.bottom);
+
+    svg.selectAll(".year-label")
+      .data(years)
+      .enter()
+      .append("text")
+      .attr("class", "year-label")
+      .attr("x", d => xScale(d))
+      .attr("y", height - 24)
+      .attr("text-anchor", "middle")
+      .text(d => d);
+
+    svg.append("defs")
+      .append("marker")
+      .attr("id", "arrow")
+      .attr("viewBox", "0 -5 10 10")
+      .attr("refX", 22)
+      .attr("refY", 0)
+      .attr("markerWidth", 7)
+      .attr("markerHeight", 7)
+      .attr("orient", "auto")
+      .append("path")
+      .attr("d", "M0,-5L10,0L0,5")
+      .attr("fill", "#999");
+
+    const nodeData = nodes.map(d => ({ ...d }));
+    const linkData = links.map(d => ({ ...d }));
+
+    const link = svg.append("g")
+      .selectAll("path")
+      .data(linkData)
+      .enter()
+      .append("path")
+      .attr("class", d => `link ${d.type}`)
+      .attr("marker-end", d => d.type === "oneway" ? "url(#arrow)" : null);
+
+    const node = svg.append("g")
+      .selectAll(".node")
+      .data(nodeData)
+      .enter()
+      .append("g")
+      .attr("class", "node")
+      .call(
+        d3.drag()
+          .on("start", dragStarted)
+          .on("drag", dragged)
+          .on("end", dragEnded)
+      );
+
+    node.append("circle")
+      .attr("r", 10);
+
+    node.append("text")
+      .attr("x", 14)
+      .attr("y", 4)
+      .text(d => d.title);
+
+    node
+      .on("mousemove", (event, d) => {
+        tooltip.style.display = "block";
+        tooltip.style.left = `${event.clientX + 14}px`;
+        tooltip.style.top = `${event.clientY + 14}px`;
+        tooltip.innerHTML = `
+          <strong>${d.title}</strong><br>
+          ${d.artist}<br>
+          ${d.year} / ${d.genre}<br><br>
+          ${d.note}
+        `;
+      })
+      .on("mouseleave", () => {
+        tooltip.style.display = "none";
       });
 
-      const trace = {
-        x: filtered.map(a => a.x),
-        y: filtered.map(a => a.y),
-        mode: "markers+text",
-        type: "scatter",
-        text: filtered.map(a => a.title),
-        textposition: "top center",
-        marker: {
-          size: filtered.map(a => Math.max(10, a.influence / 4)),
-          opacity: 0.75
-        },
-        customdata: filtered.map(a => [
-          a.artist,
-          a.year,
-          a.genre,
-          a.influence,
-          a.note
-        ]),
-        hovertemplate:
-          "<b>%{text}</b><br>" +
-          "Artist: %{customdata[0]}<br>" +
-          "Year: %{customdata[1]}<br>" +
-          "Genre: %{customdata[2]}<br>" +
-          "Influence: %{customdata[3]}<br>" +
-          "%{customdata[4]}" +
-          "<extra></extra>"
-      };
+    link
+      .on("mousemove", (event, d) => {
+        tooltip.style.display = "block";
+        tooltip.style.left = `${event.clientX + 14}px`;
+        tooltip.style.top = `${event.clientY + 14}px`;
+        tooltip.innerHTML = `
+          <strong>${d.type === "oneway" ? "一方的な影響" : "相互関係"}</strong><br>
+          ${d.note}
+        `;
+      })
+      .on("mouseleave", () => {
+        tooltip.style.display = "none";
+      });
 
-      const layout = {
-        margin: { l: 60, r: 40, t: 20, b: 60 },
-        xaxis: {
-          title: "生演奏的 ←→ 電子的",
-          range: [0, 100],
-          zeroline: false
-        },
-        yaxis: {
-          title: "内省的 ←→ 祝祭的",
-          range: [0, 100],
-          zeroline: false
-        },
-        hovermode: "closest"
-      };
+    const simulation = d3.forceSimulation(nodeData)
+      .force("link", d3.forceLink(linkData)
+        .id(d => d.id)
+        .distance(145)
+        .strength(0.45)
+      )
+      .force("x", d3.forceX(d => xScale(d.year)).strength(1.0))
+      .force("y", d3.forceY(height / 2).strength(0.08))
+      .force("charge", d3.forceManyBody().strength(-260))
+      .force("collide", d3.forceCollide().radius(54).strength(1))
+      .on("tick", ticked);
 
-      Plotly.newPlot("chart", [trace], layout, {
-        responsive: true,
-        displaylogo: false
+    function ticked() {
+      link.attr("d", d => {
+        const dx = d.target.x - d.source.x;
+        const dy = d.target.y - d.source.y;
+        const dr = d.type === "mutual" ? 40 : 0;
+        return `M${d.source.x},${d.source.y}A${dr},${dr} 0 0,1 ${d.target.x},${d.target.y}`;
+      });
+
+      node.attr("transform", d => {
+        d.x = Math.max(margin.left, Math.min(width - margin.right, d.x));
+        d.y = Math.max(margin.top, Math.min(height - margin.bottom, d.y));
+        return `translate(${d.x},${d.y})`;
       });
     }
 
-    genreFilter.addEventListener("change", render);
-    searchInput.addEventListener("input", render);
+    function dragStarted(event, d) {
+      if (!event.active) simulation.alphaTarget(0.3).restart();
+      d.fx = d.x;
+      d.fy = d.y;
+    }
 
-    render();
+    function dragged(event, d) {
+      d.fx = event.x;
+      d.fy = event.y;
+    }
+
+    function dragEnded(event, d) {
+      if (!event.active) simulation.alphaTarget(0);
+      d.fx = null;
+      d.fy = null;
+    }
+
+    document.getElementById("restartButton").addEventListener("click", () => {
+      nodeData.forEach(d => {
+        d.fx = null;
+        d.fy = null;
+      });
+      simulation.alpha(1).restart();
+    });
   </script>
 </body>
 </html>
