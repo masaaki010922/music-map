@@ -49,11 +49,47 @@
     }
 
     #chart {
+      position: relative;
       width: 100%;
       height: 75vh;
       background: #ffffff;
       border-top: 1px solid #ddd;
       border-bottom: 1px solid #ddd;
+      overflow: hidden;
+      cursor: grab;
+    }
+
+    #chart:active {
+      cursor: grabbing;
+    }
+
+    .zoom-controls {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .zoom-controls button {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      font-size: 18px;
+      line-height: 1;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .zoom-controls .reset-button {
+      width: 58px;
+      font-size: 12px;
+    }
+
+    .node {
+      cursor: pointer;
     }
 
     .node circle {
@@ -138,12 +174,19 @@
     <button id="restartButton">配置を再計算</button>
   </div>
 
-  <div id="chart"></div>
+  <div id="chart">
+    <div class="zoom-controls">
+      <button id="zoomInButton" title="拡大">＋</button>
+      <button id="zoomOutButton" title="縮小">−</button>
+      <button id="zoomResetButton" class="reset-button" title="リセット">100%</button>
+    </div>
+  </div>
 
   <div class="legend">
     横軸：リリース年、5年刻み ／ 縦方向：自動配置<br>
     矢印：一方的な影響 ／ 破線：相互に影響を与え合った関係<br>
-    アルバムにカーソルを合わせると、同じアーティストの作品の丸・アルバム名・アーティスト名・リリース年だけを赤で強調表示します。
+    アルバムにカーソルを合わせると、同じアーティストの作品の丸・アルバム名・アーティスト名・リリース年だけを赤で強調表示します。<br>
+    トラックパッド／マウスホイールで拡大縮小、背景ドラッグでマップを移動できます。
   </div>
 
   <div class="tooltip" id="tooltip"></div>
@@ -169,6 +212,9 @@
       .attr("width", width)
       .attr("height", height);
 
+    const viewport = svg.append("g")
+      .attr("class", "viewport");
+
     const minYear = d3.min(nodes, d => d.year);
     const maxYear = d3.max(nodes, d => d.year);
 
@@ -181,7 +227,7 @@
 
     const years = d3.range(startYear, endYear + 1, 5);
 
-    svg.selectAll(".year-line")
+    viewport.selectAll(".year-line")
       .data(years)
       .enter()
       .append("line")
@@ -191,7 +237,7 @@
       .attr("y1", margin.top)
       .attr("y2", height - margin.bottom);
 
-    svg.selectAll(".year-label")
+    viewport.selectAll(".year-label")
       .data(years)
       .enter()
       .append("text")
@@ -217,7 +263,7 @@
     const nodeData = nodes.map(d => ({ ...d }));
     const linkData = links.map(d => ({ ...d }));
 
-    const link = svg.append("g")
+    const link = viewport.append("g")
       .selectAll("path")
       .data(linkData)
       .enter()
@@ -225,7 +271,7 @@
       .attr("class", d => `link ${d.type}`)
       .attr("marker-end", d => d.type === "oneway" ? "url(#arrow)" : null);
 
-    const node = svg.append("g")
+    const node = viewport.append("g")
       .selectAll(".node")
       .data(nodeData)
       .enter()
@@ -347,7 +393,12 @@
     }
 
     function dragStarted(event, d) {
+      if (event.sourceEvent) {
+        event.sourceEvent.stopPropagation();
+      }
+
       if (!event.active) simulation.alphaTarget(0.3).restart();
+
       d.fx = d.x;
       d.fy = d.y;
     }
@@ -359,15 +410,43 @@
 
     function dragEnded(event, d) {
       if (!event.active) simulation.alphaTarget(0);
+
       d.fx = null;
       d.fy = null;
     }
+
+    const zoom = d3.zoom()
+      .scaleExtent([0.45, 4])
+      .on("zoom", event => {
+        viewport.attr("transform", event.transform);
+      });
+
+    svg.call(zoom);
+
+    document.getElementById("zoomInButton").addEventListener("click", () => {
+      svg.transition()
+        .duration(220)
+        .call(zoom.scaleBy, 1.25);
+    });
+
+    document.getElementById("zoomOutButton").addEventListener("click", () => {
+      svg.transition()
+        .duration(220)
+        .call(zoom.scaleBy, 0.8);
+    });
+
+    document.getElementById("zoomResetButton").addEventListener("click", () => {
+      svg.transition()
+        .duration(220)
+        .call(zoom.transform, d3.zoomIdentity);
+    });
 
     document.getElementById("restartButton").addEventListener("click", () => {
       nodeData.forEach(d => {
         d.fx = null;
         d.fy = null;
       });
+
       simulation.alpha(1).restart();
     });
   </script>
