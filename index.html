@@ -60,7 +60,7 @@
       fill: white;
       stroke: #222;
       stroke-width: 1.5;
-      transition: stroke 0.15s, stroke-width 0.15s, opacity 0.15s;
+      transition: stroke 0.15s, stroke-width 0.15s;
     }
 
     .node text {
@@ -69,7 +69,7 @@
       stroke-width: 4px;
       stroke-linejoin: round;
       pointer-events: none;
-      transition: fill 0.15s, opacity 0.15s;
+      transition: fill 0.15s;
     }
 
     .album-title {
@@ -87,7 +87,6 @@
       stroke: #999;
       stroke-width: 1.6;
       opacity: 0.8;
-      transition: opacity 0.15s, stroke 0.15s, stroke-width 0.15s;
     }
 
     .link.mutual {
@@ -144,7 +143,7 @@
   <div class="legend">
     横軸：リリース年、5年刻み ／ 縦方向：自動配置<br>
     矢印：一方的な影響 ／ 破線：相互に影響を与え合った関係<br>
-    アルバムにカーソルを合わせると、同じアーティストの作品だけを赤で強調表示します。
+    アルバムにカーソルを合わせると、同じアーティストの作品の丸・アルバム名・アーティスト名・リリース年だけを赤で強調表示します。
   </div>
 
   <div class="tooltip" id="tooltip"></div>
@@ -202,9 +201,8 @@
       .attr("text-anchor", "middle")
       .text(d => d);
 
-    const defs = svg.append("defs");
-
-    defs.append("marker")
+    svg.append("defs")
+      .append("marker")
       .attr("id", "arrow")
       .attr("viewBox", "0 -5 10 10")
       .attr("refX", 22)
@@ -215,18 +213,6 @@
       .append("path")
       .attr("d", "M0,-5L10,0L0,5")
       .attr("fill", "#999");
-
-    defs.append("marker")
-      .attr("id", "arrow-red")
-      .attr("viewBox", "0 -5 10 10")
-      .attr("refX", 22)
-      .attr("refY", 0)
-      .attr("markerWidth", 7)
-      .attr("markerHeight", 7)
-      .attr("orient", "auto")
-      .append("path")
-      .attr("d", "M0,-5L10,0L0,5")
-      .attr("fill", highlightColor);
 
     const nodeData = nodes.map(d => ({ ...d }));
     const linkData = links.map(d => ({ ...d }));
@@ -337,8 +323,6 @@
     }
 
     function highlightArtist(artist) {
-      node.style("opacity", d => d.artist === artist ? 1 : 0.28);
-
       node.select("circle")
         .style("stroke", d => d.artist === artist ? highlightColor : "#222")
         .style("stroke-width", d => d.artist === artist ? 3 : 1.5);
@@ -348,38 +332,9 @@
 
       node.selectAll(".album-meta")
         .style("fill", d => d.artist === artist ? highlightColor : "#555");
-
-      link
-        .style("opacity", d => {
-          const sourceArtist = d.source.artist;
-          const targetArtist = d.target.artist;
-          return sourceArtist === artist || targetArtist === artist ? 0.9 : 0.18;
-        })
-        .style("stroke", d => {
-          const sourceArtist = d.source.artist;
-          const targetArtist = d.target.artist;
-          return sourceArtist === artist || targetArtist === artist ? highlightColor : "#999";
-        })
-        .style("stroke-width", d => {
-          const sourceArtist = d.source.artist;
-          const targetArtist = d.target.artist;
-          return sourceArtist === artist || targetArtist === artist ? 2.3 : (d.type === "mutual" ? 2.4 : 1.6);
-        })
-        .attr("marker-end", d => {
-          if (d.type !== "oneway") return null;
-
-          const sourceArtist = d.source.artist;
-          const targetArtist = d.target.artist;
-
-          return sourceArtist === artist || targetArtist === artist
-            ? "url(#arrow-red)"
-            : "url(#arrow)";
-        });
     }
 
     function resetHighlight() {
-      node.style("opacity", 1);
-
       node.select("circle")
         .style("stroke", "#222")
         .style("stroke-width", 1.5);
@@ -389,12 +344,6 @@
 
       node.selectAll(".album-meta")
         .style("fill", "#555");
-
-      link
-        .style("opacity", 0.8)
-        .style("stroke", "#999")
-        .style("stroke-width", d => d.type === "mutual" ? 2.4 : 1.6)
-        .attr("marker-end", d => d.type === "oneway" ? "url(#arrow)" : null);
     }
 
     function dragStarted(event, d) {
