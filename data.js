@@ -46,7 +46,15 @@ const nodes = [
     year: 2025,
     genre: "Pop / R&B",
     note: "2020年代R&B／ポップの私的でラフな方向性として、Dijon周辺の感覚と接続。"
-  }
+  },
+{
+  id: "the-rainbow-children",
+  title: "The Rainbow Children",
+  artist: "Prince",
+  year: 2001,
+  genre: "Jazz-Funk / R&B / Soul",
+  note: "Princeがジャズ、ファンク、ソウル、宗教的・思想的テーマを濃く結びつけた2000年代初頭の作品として配置。"
+}
 ];
 
 const links = [
@@ -79,5 +87,11 @@ const links = [
     target: "swag",
     type: "mutual",
     note: "DijonとJustin Bieber『SWAG』周辺の相互的な制作・感覚の接続。"
-  }
+  },
+　{
+  source: "voodoo",
+  target: "the-rainbow-children",
+  type: "oneway",
+  note: "D'Angelo『Voodoo』以後の生演奏志向、ファンク／ソウル回帰、ジャム感が、Prince『The Rainbow Children』と接続する線。"
+}
 ];
