@@ -1,52 +1,83 @@
-const albums = [
+const nodes = [
   {
-    title: "Loveless",
-    artist: "My Bloody Valentine",
-    year: 1991,
-    genre: "Shoegaze",
-    x: 72,
-    y: 38,
-    influence: 95,
-    note: "ギターを電子音響的に扱った名盤。"
+    id: "fresh",
+    title: "Fresh",
+    artist: "Sly & The Family Stone",
+    year: 1973,
+    genre: "Funk / Soul",
+    note: "スライ以後のファンク、ソウル、R&Bに接続する起点として配置。"
   },
   {
+    id: "lovesexy",
+    title: "Lovesexy",
+    artist: "Prince",
+    year: 1988,
+    genre: "Funk / Pop / R&B",
+    note: "ファンク、ポップ、ゴスペル的な高揚感を統合したプリンス作品として配置。"
+  },
+  {
+    id: "voodoo",
     title: "Voodoo",
     artist: "D'Angelo",
     year: 2000,
-    genre: "R&B / Neo Soul",
-    x: 32,
-    y: 45,
-    influence: 90,
-    note: "生演奏的だが、編集感とグルーヴ設計も強い。"
+    genre: "Neo Soul / R&B",
+    note: "70年代ファンク／ソウルの身体性を、ヒップホップ以後のグルーヴ感で再構成した作品として配置。"
   },
   {
-    title: "Discovery",
-    artist: "Daft Punk",
-    year: 2001,
-    genre: "House / French Touch",
-    x: 86,
-    y: 76,
-    influence: 88,
-    note: "クラブミュージックをポップに接続した作品。"
+    id: "blonde",
+    title: "blonde",
+    artist: "Frank Ocean",
+    year: 2016,
+    genre: "Alternative R&B",
+    note: "R&Bをより私的、断片的、内省的なソングライティングへ接続した作品として配置。"
   },
   {
-    title: "Blue",
-    artist: "Joni Mitchell",
-    year: 1971,
-    genre: "Folk / Singer-songwriter",
-    x: 18,
-    y: 22,
-    influence: 86,
-    note: "私的で、言葉と旋律の比重が高い。"
+    id: "baby",
+    title: "Baby",
+    artist: "Dijon",
+    year: 2025,
+    genre: "Alternative R&B / Soul",
+    note: "ラフな録音感、ソウル、R&B、インディー的な質感が混ざる作品として配置。"
   },
-{
-  title: "Kid A",
-  artist: "Radiohead",
-  year: 2000,
-  genre: "Alternative / Electronic",
-  x: 78,
-  y: 30,
-  influence: 94,
-  note: "ロックバンドが電子音楽以後の構造に接続した作品。"
-}
+  {
+    id: "swag",
+    title: "SWAG",
+    artist: "Justin Bieber",
+    year: 2025,
+    genre: "Pop / R&B",
+    note: "2020年代R&B／ポップの私的でラフな方向性として、Dijon周辺の感覚と接続。"
+  }
+];
+
+const links = [
+  {
+    source: "fresh",
+    target: "lovesexy",
+    type: "oneway",
+    note: "Sly & The Family StoneからPrinceへのファンク／ソウル的な影響線。"
+  },
+  {
+    source: "lovesexy",
+    target: "voodoo",
+    type: "oneway",
+    note: "Prince以後のファンク、セクシュアリティ、R&B感覚がD'Angeloに接続する線。"
+  },
+  {
+    source: "voodoo",
+    target: "blonde",
+    type: "oneway",
+    note: "D'Angelo以後のR&Bの私的・内省的な展開としてFrank Oceanへ接続する線。"
+  },
+  {
+    source: "blonde",
+    target: "baby",
+    type: "oneway",
+    note: "Frank Ocean以後のオルタナティブR&Bの感覚がDijonへ接続する線。"
+  },
+  {
+    source: "baby",
+    target: "swag",
+    type: "mutual",
+    note: "DijonとJustin Bieber『SWAG』周辺の相互的な制作・感覚の接続。"
+  }
 ];
