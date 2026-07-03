@@ -2,10 +2,169 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Music Map</title>
+
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <script src="data.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+      background: #f7f7f7;
+      color: #222;
+    }
+
+    header {
+      padding: 24px 32px 12px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+
+    p {
+      margin: 0;
+      color: #666;
+      line-height: 1.6;
+    }
+
+    .controls {
+      padding: 16px 32px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    select, input {
+      font-size: 14px;
+      padding: 8px 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: white;
+    }
+
+    #chart {
+      width: 100%;
+      height: 72vh;
+    }
+
+    .axis-note {
+      padding: 0 32px 24px;
+      color: #666;
+      font-size: 14px;
+    }
+  </style>
 </head>
+
 <body>
-  <h1>Music Map</h1>
-  <p>自分用の音楽相関図サイトです。</p>
+  <header>
+    <h1>Music Map</h1>
+    <p>名盤・アーティストを、自分の批評軸で配置するための個人用音楽地図。</p>
+  </header>
+
+  <div class="controls">
+    <label>
+      ジャンル：
+      <select id="genreFilter">
+        <option value="all">すべて</option>
+      </select>
+    </label>
+
+    <label>
+      検索：
+      <input id="searchInput" type="text" placeholder="artist / album">
+    </label>
+  </div>
+
+  <div id="chart"></div>
+
+  <div class="axis-note">
+    横軸：生演奏的 ←→ 電子的 ／ 縦軸：内省的 ←→ 祝祭的
+  </div>
+
+  <script>
+    const genreFilter = document.getElementById("genreFilter");
+    const searchInput = document.getElementById("searchInput");
+
+    const genres = [...new Set(albums.map(a => a.genre))].sort();
+
+    genres.forEach(genre => {
+      const option = document.createElement("option");
+      option.value = genre;
+      option.textContent = genre;
+      genreFilter.appendChild(option);
+    });
+
+    function render() {
+      const selectedGenre = genreFilter.value;
+      const searchText = searchInput.value.toLowerCase();
+
+      const filtered = albums.filter(album => {
+        const genreMatch = selectedGenre === "all" || album.genre === selectedGenre;
+        const textMatch =
+          album.title.toLowerCase().includes(searchText) ||
+          album.artist.toLowerCase().includes(searchText);
+
+        return genreMatch && textMatch;
+      });
+
+      const trace = {
+        x: filtered.map(a => a.x),
+        y: filtered.map(a => a.y),
+        mode: "markers+text",
+        type: "scatter",
+        text: filtered.map(a => a.title),
+        textposition: "top center",
+        marker: {
+          size: filtered.map(a => Math.max(10, a.influence / 4)),
+          opacity: 0.75
+        },
+        customdata: filtered.map(a => [
+          a.artist,
+          a.year,
+          a.genre,
+          a.influence,
+          a.note
+        ]),
+        hovertemplate:
+          "<b>%{text}</b><br>" +
+          "Artist: %{customdata[0]}<br>" +
+          "Year: %{customdata[1]}<br>" +
+          "Genre: %{customdata[2]}<br>" +
+          "Influence: %{customdata[3]}<br>" +
+          "%{customdata[4]}" +
+          "<extra></extra>"
+      };
+
+      const layout = {
+        margin: { l: 60, r: 40, t: 20, b: 60 },
+        xaxis: {
+          title: "生演奏的 ←→ 電子的",
+          range: [0, 100],
+          zeroline: false
+        },
+        yaxis: {
+          title: "内省的 ←→ 祝祭的",
+          range: [0, 100],
+          zeroline: false
+        },
+        hovermode: "closest"
+      };
+
+      Plotly.newPlot("chart", [trace], layout, {
+        responsive: true,
+        displaylogo: false
+      });
+    }
+
+    genreFilter.addEventListener("change", render);
+    searchInput.addEventListener("input", render);
+
+    render();
+  </script>
 </body>
 </html>
