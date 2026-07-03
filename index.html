@@ -127,7 +127,7 @@
   <div id="chart"></div>
 
   <div class="legend">
-    横軸：リリース年 ／ 縦方向：自動配置<br>
+    横軸：リリース年、5年刻み ／ 縦方向：自動配置<br>
     矢印：一方的な影響 ／ 破線：相互に影響を与え合った関係
   </div>
 
@@ -155,11 +155,14 @@
     const minYear = d3.min(nodes, d => d.year);
     const maxYear = d3.max(nodes, d => d.year);
 
+    const startYear = Math.floor(minYear / 5) * 5;
+    const endYear = Math.ceil(maxYear / 5) * 5;
+
     const xScale = d3.scaleLinear()
-      .domain([minYear - 2, maxYear + 2])
+      .domain([startYear, endYear])
       .range([margin.left, width - margin.right]);
 
-    const years = [...new Set(nodes.map(d => d.year))].sort((a, b) => a - b);
+    const years = d3.range(startYear, endYear + 1, 5);
 
     svg.selectAll(".year-line")
       .data(years)
