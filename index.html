@@ -90,13 +90,14 @@
 
     .node {
       cursor: pointer;
+      transition: opacity 0.15s;
     }
 
     .node circle {
       fill: white;
       stroke: #222;
       stroke-width: 1.5;
-      transition: stroke 0.15s, stroke-width 0.15s;
+      transition: stroke-width 0.15s, r 0.15s;
     }
 
     .node text {
@@ -105,17 +106,18 @@
       stroke-width: 4px;
       stroke-linejoin: round;
       pointer-events: none;
-      transition: fill 0.15s;
     }
 
     .album-title {
       font-size: 13px;
       font-weight: 600;
+      fill: #222;
     }
 
     .album-meta {
       font-size: 11px;
       font-weight: 400;
+      fill: #555;
     }
 
     .link {
@@ -185,7 +187,7 @@
   <div class="legend">
     横軸：リリース年、5年刻み ／ 縦方向：自動配置<br>
     矢印：一方的な影響 ／ 破線：相互に影響を与え合った関係<br>
-    アルバムにカーソルを合わせると、同じアーティストの作品の丸・アルバム名・アーティスト名・リリース年だけを赤で強調表示します。<br>
+    アルバムにカーソルを合わせると、同じアーティストの作品だけを濃く表示します。線と矢印は強調しません。<br>
     トラックパッド／マウスホイールで拡大縮小、背景ドラッグでマップを移動できます。
   </div>
 
@@ -204,8 +206,6 @@
       bottom: 56,
       left: 80
     };
-
-    const highlightColor = "#d62828";
 
     const svg = d3.select("#chart")
       .append("svg")
@@ -285,9 +285,7 @@
       );
 
     node.append("circle")
-      .attr("r", 10)
-      .style("stroke", "#222")
-      .style("stroke-width", 1.5);
+      .attr("r", 10);
 
     node.append("text")
       .attr("x", 14)
@@ -299,14 +297,12 @@
           .attr("class", "album-title")
           .attr("x", 14)
           .attr("dy", 0)
-          .style("fill", "#222")
           .text(d.title);
 
         text.append("tspan")
           .attr("class", "album-meta")
           .attr("x", 14)
           .attr("dy", 16)
-          .style("fill", "#555")
           .text(`${d.artist} / ${d.year}`);
       });
 
@@ -369,27 +365,31 @@
     }
 
     function highlightArtist(artist) {
+      node.style("opacity", d => d.artist === artist ? 1 : 0.25);
+
       node.select("circle")
-        .style("stroke", d => d.artist === artist ? highlightColor : "#222")
+        .attr("r", d => d.artist === artist ? 11 : 10)
         .style("stroke-width", d => d.artist === artist ? 3 : 1.5);
 
       node.selectAll(".album-title")
-        .style("fill", d => d.artist === artist ? highlightColor : "#222");
+        .style("font-weight", d => d.artist === artist ? 700 : 600);
 
       node.selectAll(".album-meta")
-        .style("fill", d => d.artist === artist ? highlightColor : "#555");
+        .style("font-weight", d => d.artist === artist ? 600 : 400);
     }
 
     function resetHighlight() {
+      node.style("opacity", 1);
+
       node.select("circle")
-        .style("stroke", "#222")
+        .attr("r", 10)
         .style("stroke-width", 1.5);
 
       node.selectAll(".album-title")
-        .style("fill", "#222");
+        .style("font-weight", 600);
 
       node.selectAll(".album-meta")
-        .style("fill", "#555");
+        .style("font-weight", 400);
     }
 
     function dragStarted(event, d) {
