@@ -97,7 +97,7 @@
       fill: white;
       stroke: #222;
       stroke-width: 1.5;
-      transition: stroke-width 0.15s, r 0.15s;
+      transition: stroke-width 0.15s, r 0.15s, filter 0.15s;
     }
 
     .node text {
@@ -125,6 +125,7 @@
       stroke: #999;
       stroke-width: 1.6;
       opacity: 0.8;
+      pointer-events: none;
     }
 
     .link.mutual {
@@ -187,7 +188,7 @@
   <div class="legend">
     横軸：リリース年、5年刻み ／ 縦方向：自動配置<br>
     矢印：一方的な影響 ／ 破線：相互に影響を与え合った関係<br>
-    アルバムにカーソルを合わせると、同じアーティストの作品だけを濃く表示します。線と矢印は強調しません。<br>
+    アルバムにカーソルを合わせると、同じアーティストの作品だけを大きく濃く表示します。線と矢印は強調しません。<br>
     トラックパッド／マウスホイールで拡大縮小、背景ドラッグでマップを移動できます。
   </div>
 
@@ -324,20 +325,6 @@
         tooltip.style.display = "none";
       });
 
-    link
-      .on("mousemove", (event, d) => {
-        tooltip.style.display = "block";
-        tooltip.style.left = `${event.clientX + 14}px`;
-        tooltip.style.top = `${event.clientY + 14}px`;
-        tooltip.innerHTML = `
-          <strong>${d.type === "oneway" ? "一方的な影響" : "相互関係"}</strong><br>
-          ${d.note}
-        `;
-      })
-      .on("mouseleave", () => {
-        tooltip.style.display = "none";
-      });
-
     const simulation = d3.forceSimulation(nodeData)
       .force("link", d3.forceLink(linkData)
         .id(d => d.id)
@@ -364,17 +351,25 @@
     }
 
     function highlightArtist(artist) {
-      node.style("opacity", d => d.artist === artist ? 1 : 0.25);
+      node.filter(d => d.artist === artist).raise();
+
+      node.style("opacity", d => d.artist === artist ? 1 : 0.12);
 
       node.select("circle")
-        .attr("r", d => d.artist === artist ? 11 : 10)
-        .style("stroke-width", d => d.artist === artist ? 3 : 1.5);
+        .attr("r", d => d.artist === artist ? 15 : 10)
+        .style("stroke-width", d => d.artist === artist ? 4.5 : 1.5)
+        .style("filter", d => d.artist === artist
+          ? "drop-shadow(0px 2px 5px rgba(0,0,0,0.35))"
+          : "none"
+        );
 
       node.selectAll(".album-title")
-        .style("font-weight", d => d.artist === artist ? 700 : 600);
+        .style("font-weight", d => d.artist === artist ? 800 : 600)
+        .style("font-size", d => d.artist === artist ? "16px" : "13px");
 
       node.selectAll(".album-meta")
-        .style("font-weight", d => d.artist === artist ? 600 : 400);
+        .style("font-weight", d => d.artist === artist ? 700 : 400)
+        .style("font-size", d => d.artist === artist ? "13px" : "11px");
     }
 
     function resetHighlight() {
@@ -382,13 +377,16 @@
 
       node.select("circle")
         .attr("r", 10)
-        .style("stroke-width", 1.5);
+        .style("stroke-width", 1.5)
+        .style("filter", "none");
 
       node.selectAll(".album-title")
-        .style("font-weight", 600);
+        .style("font-weight", 600)
+        .style("font-size", "13px");
 
       node.selectAll(".album-meta")
-        .style("font-weight", 400);
+        .style("font-weight", 400)
+        .style("font-size", "11px");
     }
 
     function dragStarted(event, d) {
